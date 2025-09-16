@@ -5,14 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Copa Alcer - Classificação Oficial</title>
     <style>
-        :root { --primary-color: #005f73; --secondary-color: #0a9396; --accent-color: #94d2bd; --bg-color: #e9d8a6; --text-color: #333; }
+        :root { --primary-color: #005f73; --secondary-color: #0a9396; --accent-color: #94d2bd; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: var(--text-color); }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .header { text-align: center; padding: 20px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; border-radius: 12px 12px 0 0; }
         .header h1 { margin-bottom: 5px; }
-        .search-section { padding: 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px; }
-        .search-section input { width: 100%; padding: 12px; font-size: 1.2em; border: 2px solid #ddd; border-radius: 8px; }
+        .filters-section { display: flex; gap: 15px; padding: 20px; background: #f8f9fa; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filters-section .filter-group { flex: 1; min-width: 200px; }
+        .filters-section label { display: block; margin-bottom: 5px; font-weight: 600; color: var(--primary-color); }
+        .filters-section input, .filters-section select { width: 100%; padding: 12px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 8px; }
         h2 { color: var(--primary-color); border-bottom: 3px solid var(--accent-color); padding-bottom: 10px; margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
@@ -20,14 +22,14 @@
         tr:nth-of-type(even) { background-color: #f8f9fa; }
         tr:hover { background-color: #e9ecef; }
         .pos, .points { text-align: center; font-weight: bold; }
-        .pos-1 { color: #d4af37; } .pos-2 { color: #c0c0c0; } .pos-3 { color: #cd7f32; }
+        .pos-1 { color: #d4af37; font-size: 1.1em; } .pos-2 { color: #8d99ae; font-size: 1.1em; } .pos-3 { color: #cd7f32; font-size: 1.1em; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
-        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: 12px; animation: fadeIn 0.3s; }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 700px; border-radius: 12px; animation: fadeIn 0.3s; }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         #athlete-details-content ul { list-style-type: none; padding-left: 0; }
-        #athlete-details-content li { background: #f1f1f1; margin-bottom: 8px; padding: 10px; border-radius: 5px; }
+        #athlete-details-content li { background: #f1f1f1; margin-bottom: 8px; padding: 10px; border-radius: 5px; border-left: 5px solid var(--accent-color); }
         #athlete-name-modal { color: var(--primary-color); }
-        #loading { text-align: center; font-size: 1.5em; padding: 40px; }
+        #loading, #no-results { text-align: center; font-size: 1.5em; padding: 40px; color: #777; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
@@ -37,21 +39,42 @@
             <h1>🏆 Copa Alcer de Corridas 🏆</h1>
             <p>Classificação Oficial do Campeonato</p>
         </div>
-        <div class="search-section">
-            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar por nome do atleta...">
+
+        <div class="filters-section">
+            <div class="filter-group">
+                <label for="searchInput">Buscar Atleta</label>
+                <input type="text" id="searchInput" onkeyup="applyFilters()" placeholder="Digite um nome...">
+            </div>
+            <div class="filter-group">
+                <label for="genderFilter">Gênero</label>
+                <select id="genderFilter" onchange="applyFilters()">
+                    <option value="todos">Todos</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Feminino">Feminino</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="distanceFilter">Distância</label>
+                <select id="distanceFilter" onchange="applyFilters()">
+                    <option value="todos">Todas</option>
+                    <option value="5K">5K</option>
+                    <option value="10K">10K</option>
+                </select>
+            </div>
         </div>
 
         <section id="leaderboard">
-            <h2>Classificação Geral do Campeonato</h2>
-            <div id="loading">Carregando dados do campeonato...</div>
+            <h2 id="rankingTitle">Classificação Geral do Campeonato</h2>
+            <div id="loading">Carregando todos os dados...</div>
+            <div id="no-results" style="display: none;">Nenhum atleta encontrado com os filtros selecionados.</div>
             <table id="leaderboardTable">
                 <thead>
                     <tr>
                         <th class="pos">Pos.</th>
                         <th>Atleta</th>
                         <th>Equipe</th>
-                        <th class="points">Pontuação Total</th>
-                        <th class="points">Etapas Concluídas</th>
+                        <th class="points">Pontuação</th>
+                        <th class="points">Etapas</th>
                     </tr>
                 </thead>
                 <tbody id="leaderboardBody">
@@ -74,35 +97,67 @@
         document.addEventListener('DOMContentLoaded', function() {
             fetch('database.json?v=' + new Date().getTime())
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erro ao carregar o arquivo database.json');
-                    }
+                    if (!response.ok) throw new Error('Falha ao carregar database.json');
                     return response.json();
                 })
                 .then(data => {
                     championshipData = data;
                     document.getElementById('loading').style.display = 'none';
-                    renderLeaderboard();
+                    applyFilters();
                 })
                 .catch(error => {
                     console.error('Erro:', error);
-                    document.getElementById('loading').textContent = 'Falha ao carregar os dados. Verifique se o arquivo "database.json" existe.';
+                    document.getElementById('loading').textContent = 'Não foi possível carregar os dados. Verifique o arquivo "database.json".';
                 });
         });
 
-        function renderLeaderboard() {
+        function applyFilters() {
+            const genderFilter = document.getElementById('genderFilter').value;
+            const distanceFilter = document.getElementById('distanceFilter').value;
+            const searchFilter = document.getElementById('searchInput').value.toUpperCase();
+
+            const titleParts = ["Classificação"];
+            if (genderFilter !== 'todos') titleParts.push(genderFilter);
+            if (distanceFilter !== 'todos') titleParts.push(distanceFilter);
+            document.getElementById('rankingTitle').textContent = titleParts.join(' ');
+
+
+            const filteredAthletes = Object.values(championshipData.atletas)
+                .map(athlete => {
+                    const relevantRaces = athlete.corridas.filter(run =>
+                        (genderFilter === 'todos' || run.genero === genderFilter) &&
+                        (distanceFilter === 'todos' || run.distancia === distanceFilter)
+                    );
+
+                    if (relevantRaces.length > 0 && athlete.nome.toUpperCase().includes(searchFilter)) {
+                        const totalPoints = relevantRaces.reduce((sum, run) => sum + run.pontos, 0);
+                        return { ...athlete, filteredPoints: totalPoints, filteredRacesCount: relevantRaces.length };
+                    }
+                    return null;
+                })
+                .filter(athlete => athlete !== null && athlete.filteredPoints > 0)
+                .sort((a, b) => b.filteredPoints - a.filteredPoints);
+            
+            renderLeaderboard(filteredAthletes);
+        }
+
+        function renderLeaderboard(athletes) {
             const leaderboardBody = document.getElementById('leaderboardBody');
+            const noResultsDiv = document.getElementById('no-results');
             leaderboardBody.innerHTML = '';
 
-            const athletesArray = Object.values(championshipData.atletas);
-            athletesArray.sort((a, b) => b.pontuacao_total - a.pontuacao_total);
+            if (athletes.length === 0) {
+                noResultsDiv.style.display = 'block';
+                return;
+            }
+            noResultsDiv.style.display = 'none';
 
-            athletesArray.forEach((athlete, index) => {
+            athletes.forEach((athlete, index) => {
                 const pos = index + 1;
                 const row = document.createElement('tr');
                 row.style.cursor = 'pointer';
                 row.onclick = () => showAthleteDetails(athlete.numero);
-
+                
                 let posClass = '';
                 if (pos === 1) posClass = 'pos-1';
                 else if (pos === 2) posClass = 'pos-2';
@@ -112,32 +167,13 @@
                     <td class="pos ${posClass}">${pos}º</td>
                     <td>${athlete.nome}</td>
                     <td>${athlete.equipe || 'N/A'}</td>
-                    <td class="points">${athlete.pontuacao_total}</td>
-                    <td class="points">${athlete.corridas.length}</td>
+                    <td class="points">${athlete.filteredPoints}</td>
+                    <td class="points">${athlete.filteredRacesCount}</td>
                 `;
                 leaderboardBody.appendChild(row);
             });
         }
-
-        function filterTable() {
-            const input = document.getElementById('searchInput');
-            const filter = input.value.toUpperCase();
-            const table = document.getElementById('leaderboardTable');
-            const tr = table.getElementsByTagName('tr');
-
-            for (let i = 1; i < tr.length; i++) {
-                let td = tr[i].getElementsByTagName('td')[1];
-                if (td) {
-                    let txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        tr[i].style.display = '';
-                    } else {
-                        tr[i].style.display = 'none';
-                    }
-                }
-            }
-        }
-
+        
         function showAthleteDetails(athleteNumber) {
             const athlete = championshipData.atletas[athleteNumber.toString()];
             if (!athlete) return;
@@ -147,26 +183,24 @@
             const contentEl = document.getElementById('athlete-details-content');
 
             nameEl.textContent = athlete.nome;
-
+            
             let detailsHtml = `
                 <p><strong>Número:</strong> ${athlete.numero}</p>
                 <p><strong>Equipe:</strong> ${athlete.equipe || 'N/A'}</p>
-                <p><strong>Pontuação Total:</strong> ${athlete.pontuacao_total}</p>
+                <p><strong>Pontuação Geral Total:</strong> ${athlete.pontuacao_total}</p>
                 <hr style="margin: 15px 0;">
-                <h3>Resultados nas Etapas:</h3>
-                <ul>
-            `;
-
+                <h3>Histórico de Corridas:</h3>
+                <ul>`;
+            
             athlete.corridas.forEach(run => {
                 detailsHtml += `
                     <li>
                         <strong>Etapa: ${run.etapa}</strong><br>
-                        <strong>Distância:</strong> ${run.distancia} | 
+                        ${run.genero} - ${run.distancia} | 
                         <strong>Tempo:</strong> ${run.tempo_liquido} |
-                        <strong>Pos. Geral:</strong> ${run.colocacao_geral}º |
+                        <strong>Pos. Geral (${run.distancia} ${run.genero}):</strong> ${run.colocacao_geral}º |
                         <strong>Pontos:</strong> ${run.pontos}
-                    </li>
-                `;
+                    </li>`;
             });
 
             detailsHtml += `</ul>`;
