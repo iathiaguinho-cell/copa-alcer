@@ -1,0 +1,44 @@
+name: Processar Resultados da Etapa
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'novas_etapas/**.xlsx'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas openpyxl
+
+      - name: Get changed file
+        id: changed_file
+        run: |
+          echo "FILE=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '.xlsx' | head -n 1)" >> $GITHUB_OUTPUT
+
+      - name: Run Python script to process data
+        if: steps.changed_file.outputs.FILE
+        run: python processar_dados.py ${{ steps.changed_file.outputs.FILE }}
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add database.json
+          git diff --staged --quiet || git commit -m "chore: Atualiza banco de dados com resultados"
+          git push
