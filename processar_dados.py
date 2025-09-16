@@ -28,18 +28,23 @@ def salvar_database(data):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 def processar_etapa(filepath, db):
-    etapa_nome = os.path.splitext(os.path.basename(filepath))[0].replace("_", " ")
+    filename = os.path.splitext(os.path.basename(filepath))[0]
+    etapa_nome = filename.split('/')[0].replace("_", " ") # Extrai o nome da etapa do caminho
+    
+    # Determina gênero e distância a partir do nome do arquivo
+    genero = "Masculino" if "masculino" in filename.lower() else "Feminino"
+    distancia = "10K" if "10k" in filename.lower() else "5K"
 
     try:
         df = pd.read_excel(filepath)
-        print(f"Processando etapa '{etapa_nome}' do arquivo '{filepath}'...")
+        print(f"Processando: {etapa_nome} - {distancia} {genero}")
     except Exception as e:
         print(f"Erro ao ler o arquivo {filepath}: {e}")
         return
 
     colunas_necessarias = ['Numero', 'Nome', 'Tempo_Liquido', 'Colocacao_Geral']
     if not all(col in df.columns for col in colunas_necessarias):
-        print(f"ERRO: Colunas essenciais não encontradas. Verifique a planilha: {filepath}")
+        print(f"ERRO: Colunas essenciais não encontradas na planilha: {filepath}")
         return
 
     for _, row in df.iterrows():
@@ -57,15 +62,16 @@ def processar_etapa(filepath, db):
                 'numero': int(numero_atleta), 'nome': nome_atleta,
                 'equipe': str(row.get('Equipe', '')).strip(), 'pontuacao_total': 0, 'corridas': []
             }
-
+        
         db['atletas'][numero_atleta]['nome'] = nome_atleta
         db['atletas'][numero_atleta]['equipe'] = str(row.get('Equipe', '')).strip()
 
-        if any(c['etapa'] == etapa_nome for c in db['atletas'][numero_atleta]['corridas']):
+        # Evita duplicar o mesmo resultado de corrida
+        if any(c['etapa'] == etapa_nome and c['distancia'] == distancia and c['genero'] == genero for c in db['atletas'][numero_atleta]['corridas']):
             continue
 
         db['atletas'][numero_atleta]['corridas'].append({
-            'etapa': etapa_nome, 'distancia': str(row.get('Distancia', 'N/A')),
+            'etapa': etapa_nome, 'distancia': distancia, 'genero': genero,
             'tempo_liquido': str(row['Tempo_Liquido']), 'colocacao_geral': colocacao,
             'pontos': pontos
         })
@@ -73,14 +79,15 @@ def processar_etapa(filepath, db):
 def main():
     db = carregar_database()
     arquivo_modificado = sys.argv[1]
-
+    
     if arquivo_modificado.startswith('novas_etapas/') and arquivo_modificado.endswith('.xlsx'):
         processar_etapa(arquivo_modificado, db)
-
+        
+        # Recalcula a pontuação geral total para todos os atletas
         for atleta_id in db['atletas']:
             total_pontos = sum(corrida['pontos'] for corrida in db['atletas'][atleta_id]['corridas'])
             db['atletas'][atleta_id]['pontuacao_total'] = total_pontos
-
+        
         salvar_database(db)
         print(f"Processamento concluído! '{DATABASE_FILE}' foi atualizado.")
 
